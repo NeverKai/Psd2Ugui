@@ -141,12 +141,14 @@ function outPutInfos( _isOutPutPngs, _maxOutlinePixel, _maxGradientCount ){
 function deleteLayers( layerArray )
 {
 	var len = layerArray.length;
-	//alert(layerArray.toString());
+	alert("deleteLayers");
+    var name;
 	for( var i = 0;i < len;i++)
 	{
 		var currentLayer = layerArray.pop();
 		try
 		{
+            name = currentLayer.name;
 			if( currentLayer.allLocked )
 			{
 				currentLayer.allLocked = false;
@@ -155,8 +157,8 @@ function deleteLayers( layerArray )
 		}
 		catch(err)
 		{
-			//alert(currentLayer);
-			alert(err);
+			alert(currentLayer);
+			// alert(name + err);
 		}
 	}
 }
@@ -578,6 +580,7 @@ function exportLockLayers(obj)
         exportLayerSetImage(newPsd, validFileName,isOutPutPngs);
         sceneData += "</image>";
         obj.allLocked = true;
+        obj.visible = false;
         sceneData += "\n</Layer>";
 
     } catch (error) {
@@ -635,7 +638,7 @@ function exportLabel(obj,validFileName)
                 var rgbHexTxt = changeToHex(rgbTxt);
                 sceneDataTemp += "<outline>\n";
                 sceneDataTemp += "<color>" + rgbHexTxt + "</color>";
-                sceneDataTemp += "<opacity>" + opacity + "</opacity>";
+                sceneDataTemp += "<size>" + size + "</size>";
                 sceneDataTemp += "</outline>";
             }
         }
