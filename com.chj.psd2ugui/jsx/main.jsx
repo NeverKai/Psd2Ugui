@@ -1,7 +1,4 @@
-﻿// 作者：chj
-// QQ：1216948100
-
-var sceneData;
+﻿var sceneData;
 var sourcePsd;
 var duppedPsd;
 var destinationFolder;
@@ -63,28 +60,40 @@ function outPutInfos( _isOutPutPngs, _maxOutlinePixel, _maxGradientCount ){
             
             //merge cut mask
             //first remove hided grouped layers and hided normal layer has grouped layers
-            var artLayers = app.activeDocument.artLayers;
-            var layerSets = app.activeDocument.layerSets;
-            var hidedGroupedLayerArray = new Array();
-            findGroupedLayers( artLayers, hidedGroupedLayerArray );
-            findGroupedLayersInLayerSets( layerSets, hidedGroupedLayerArray );
-            deleteLayers( hidedGroupedLayerArray );
+            // var artLayers = app.activeDocument.artLayers;
+            // var layerSets = app.activeDocument.layerSets;
+            // var hidedGroupedLayerArray = new Array();
+            // alert("findGroupedLayers start");
+            // findGroupedLayers( artLayers, hidedGroupedLayerArray );
+            // alert("findGroupedLayersInLayerSets start");
+            // findGroupedLayersInLayerSets( layerSets, hidedGroupedLayerArray );
+            // deleteLayers( hidedGroupedLayerArray );
             
             //second delete hided layers and layersets
             artLayers = app.activeDocument.artLayers;
             layerSets = app.activeDocument.layerSets;
             var hidedLayerArray = new Array();
             var hidedLayerSetArray = new Array();
+            // alert("findHideLayer start");
             findHideLayer( artLayers, hidedLayerArray );
+            // alert("findHideLayersInLayerSet start");
             findHideLayersInLayerSet( layerSets, hidedLayerArray, hidedLayerSetArray );
+
+            // alert("deleteLayers hidedLayerArray start" + hidedLayerArray.length);
+            // alert("deleteLayers hidedLayerArray start" + hidedLayerArray);
             deleteLayers( hidedLayerArray );
             deleteLayers( hidedLayerSetArray );
-            
+
+            // alert("done1");
+            // return;
             //and then rasterize layer sheet
             artLayers = app.activeDocument.artLayers;
             layerSets = app.activeDocument.layerSets;
             rasterizeLayers( artLayers );
             rasterizeLayersInLayerSets( layerSets );
+
+            // alert("done3");
+            // return;
             
             //finally merge grouped layers
             artLayers = app.activeDocument.artLayers;
@@ -92,19 +101,18 @@ function outPutInfos( _isOutPutPngs, _maxOutlinePixel, _maxGradientCount ){
             var toBeMergeLayerArray = new Array();
             getAllGroupedLayers( artLayers, toBeMergeLayerArray );
             getAllGroupedLayersInLayerSets( layerSets, toBeMergeLayerArray );
-            var cannotMergeLayerArray = new Array();
-            mergeGroupedLayers( toBeMergeLayerArray, cannotMergeLayerArray );
-            deleteLayers( cannotMergeLayerArray );
-            
-            //return;
-            
+            // var cannotMergeLayerArray = new Array();
+            // alert("mergeGroupedLayers start");
+            //mergeGroupedLayers( toBeMergeLayerArray, cannotMergeLayerArray );
+            // alert("deleteLayers cannotMergeLayerArray start");
+            // deleteLayers( cannotMergeLayerArray );
+
             duppedPsd.activeLayer = duppedPsd.layers[duppedPsd.layers.length - 1];
 
-            hideAllLayers(duppedPsd);
+            // hideAllLayers(duppedPsd);
     } catch (error) {
         alert(error)
     }
-
 
     // export layers
     sceneData = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
@@ -112,10 +120,11 @@ function outPutInfos( _isOutPutPngs, _maxOutlinePixel, _maxGradientCount ){
     
     sceneData += "\n<psdSize>";
     sceneData += "<width>" + duppedPsd.width.value + "</width>";
-    sceneData += "<height>" + duppedPsd.height.value+ "</height>";
+    sceneData += "<height>" + duppedPsd.height.value + "</height>";
+    sceneData += "<path>" +destinationFolder + "</path>";
     sceneData += "</psdSize>";
     sceneData += "\n<layers>";
-    
+    // alert("export all layers");
     exportAllLayers(duppedPsd);
     
     sceneData += "</layers>";
@@ -141,26 +150,49 @@ function outPutInfos( _isOutPutPngs, _maxOutlinePixel, _maxGradientCount ){
 function deleteLayers( layerArray )
 {
 	var len = layerArray.length;
-	alert("deleteLayers");
     var name;
 	for( var i = 0;i < len;i++)
 	{
 		var currentLayer = layerArray.pop();
-		try
-		{
-            name = currentLayer.name;
-			if( currentLayer.allLocked )
-			{
-				currentLayer.allLocked = false;
-			}
+        name = currentLayer.name;
+
+        try
+        {
+            if(currentLayer.typename == "LayerSet")
+            {
+                unlock(currentLayer);
+            }
+
+            if( currentLayer.allLocked )
+            {
+                currentLayer.allLocked = false;
+            }
+
 			currentLayer.remove();
+
 		}
 		catch(err)
 		{
-			alert(currentLayer);
-			// alert(name + err);
+            currentLayer.visible = false;
+			alert(err + " " + currentLayer + " allLocked:" + currentLayer.allLocked);
 		}
 	}
+}
+
+function unlock(layerSet)
+{
+    try {
+        for (var index = 0; index < layerSet.layers.length; index++) {
+            var element = array[index];
+            if(element.element == "LayerSet")
+            {
+                unlock(element);
+            }
+            element.allLocked = false;
+        }
+    } catch (error) {
+        alert(error + layerSet.length);
+    }    
 }
 
 function findHideLayer( artLayers, layerArray )
@@ -173,6 +205,7 @@ function findHideLayer( artLayers, layerArray )
 	{
 		if(artLayers[i].visible == false)
 		{
+            artLayers[i].allLocked = false;
 			layerArray.push( artLayers[i] );
 		}
 	}
@@ -193,6 +226,7 @@ function findHideLayersInLayerSet( layerSets, layerArray, layerSetArray )
 		}
 		else
 		{
+            layerSets[i].allLocked = false;
 			layerSetArray.push( layerSets[i] );
 		}
 	}
@@ -304,6 +338,7 @@ function findGroupedLayers( layers, layerArray )
 				var groupedLayers = getAllGroupedLayersInLayer( nextLayer );
 				if( !arrayContainsKey( layerArray, nextLayer ) )
 				{
+                    nextLayer.allLocked = false;
 					layerArray.push( nextLayer );
 				}
 				for(var j = groupedLayers.length - 1;j >= 0;j--)
@@ -319,6 +354,7 @@ function findGroupedLayers( layers, layerArray )
 			{
 				if( !arrayContainsKey( layerArray, layers[i] ) )
 				{
+                    layers[i].allLocked = false;
 					layerArray.push( layers[i] );
 				}
 			}
@@ -466,12 +502,10 @@ function exportLayer(obj)
         return;
     }
 
-    alert("exportLayer " + obj.name);
     if (obj.typename == "LayerSet") {
             exportLayerSet(obj);
     }
     else if  (obj.typename = "ArtLayer"){
-        app.activeDocument.acviveLayer = obj;
         exportArtLayer(obj);
     }
 }
@@ -485,13 +519,12 @@ function exportLayerSet(_layer)
     
     if(_layer.allLocked)
     {
-        alert(_layer.name);
         exportLockLayers(_layer);
         _layer.visible = false;
     }
     else
     {
-        alert("1" + _layer.name);
+        // alert("exportLayerSet exportAllLayers " + _layer.name);
         sceneData += "<Layer>";
         sceneData += "<type>Normal</type>";
         sceneData += "<name>" + _layer.name + "</name>";    
@@ -534,13 +567,21 @@ function exportArtLayer(obj)
     var validFileName = makeValidFileName(obj.name);
     sceneData += "<name>" + validFileName + "</name>";
     sceneData += "<image>\n";
+    app.activeDocument.activeLayer = obj;
+    obj.visible = true;
     if (LayerKind.TEXT == obj.kind)
     {
         exportLabel(obj,validFileName);
     }
     else
     {
-        exportImage(obj,validFileName,isOutPutPngs);
+        // alert("exportArtLayer " + obj.name);
+        try {
+            var newPsd = copyAndPasteNewPsd(obj);
+            exportLayerSetImage(newPsd, validFileName, isOutPutPngs);
+        } catch (error) {
+            alert(error);
+        }
     }
     sceneData += "</image>";
     
@@ -554,26 +595,35 @@ function exportLockLayers(obj)
 
     sceneData += "\n<Layer>";
     sceneData += "<type>Normal</type>";
-    alert("exportLockLayers" + obj.name);
+    // alert("exportLockLayers" + obj.name);
     obj.allLocked = false;
     try {
         var name =  obj.name;
         var dupLayer = obj.duplicate();
         duppedPsd.activeLayer = dupLayer;
 
-        for (var index = 0; index < dupLayer.layers.length; index++) {
-            var element = dupLayer.layers[index];
-            element.visible = true;
-        }
+        // for (var index = 0; index < dupLayer.layers.length; index++) {
+        //     var element = dupLayer.layers[index];
+        //     element.visible = true;
+        // }
 
         var mergeLayer = dupLayer.merge();
         mergeLayer.allLocked = false;
         duppedPsd.activeLayer = mergeLayer;
+
+        var arr = mergeLayer.bounds;
         mergeLayer.copy();
+        mergeLayer.remove();
         var newPsd = addDocument(1);
         app.activeDocument = newPsd;
         newPsd.paste();
-       
+        var layer = newPsd.layers.getByName("Layer 1");
+        if(layer != null)
+        {
+            var curBounds = layer.bounds;
+            layer.translate(-curBounds[0] + arr[0], -curBounds[1] + arr[1]);
+        }
+
         var validFileName = makeValidFileName(name);
         sceneData += "<name>" + validFileName + "</name>";
         sceneData += "<image>\n";
@@ -581,6 +631,7 @@ function exportLockLayers(obj)
         sceneData += "</image>";
         obj.allLocked = true;
         obj.visible = false;
+        
         sceneData += "\n</Layer>";
 
     } catch (error) {
@@ -597,94 +648,173 @@ function addDocument(index) {
 
 function exportLabel(obj,validFileName)
 {
-	var sceneDataTemp = "";
-    sceneDataTemp += "<imageType>" + "Label" + "</imageType>\n";
-    sceneDataTemp += "<name>" + validFileName + "</name>\n";
-	
-    sceneDataTemp += "<arguments>";
-    sceneDataTemp += "<color>" + obj.textItem.color.rgb.hexValue + "</color>";
-    sceneDataTemp += "<font>" + obj.textItem.font + "</font>";
-    sceneDataTemp += "<fontSize>" + Math.round(obj.textItem.size.value) + "</fontSize>";
-    sceneDataTemp += "<content>" + obj.textItem.contents + "</content>";
-    // 透明度
-    sceneDataTemp += "<opacity>" + Math.round(obj.opacity) * Math.round(obj.fillOpacity) / 100 +"</opacity>";
-    //描边
-    obj.visible = true;
-    app.activeDocument.activeLayer = obj;
-    var currentDesc = getActiveLayerDescriptor();
-
-    var layerEffectsID = getID( "layerEffects" );
-    if(currentDesc.hasKey(layerEffectsID))
-    {
-        var layerEffectsDesc = currentDesc.getObjectValue(layerEffectsID);
-        var frameFXID = getID("frameFX");
-        if(layerEffectsDesc.hasKey(frameFXID)){
-            var frameFXDesc = layerEffectsDesc.getObjectValue(frameFXID);
-            var colorID = getID("color");
-            var opacity = frameFXDesc.getDouble(getID("opacity"));
-			var size = frameFXDesc.getDouble(getID("size"));
-			//若描边像素大于设置的描边像素，则输出为图片
-			if( Number(size) > maxOutlinePixel )
-			{
-				app.activeDocument.activeLayer = obj;
-				RasterizedTextLayer();
-				exportImage(obj,validFileName,isOutPutPngs);
-				return;
-			}
-            if(frameFXDesc.hasKey(colorID) && frameFXDesc.getBoolean(1701732706))
-            {
-                var colorDesc = frameFXDesc.getObjectValue(colorID);
-                var rgbTxt = descToColorList(colorDesc);
-                var rgbHexTxt = changeToHex(rgbTxt);
-                sceneDataTemp += "<outline>\n";
-                sceneDataTemp += "<color>" + rgbHexTxt + "</color>";
-                sceneDataTemp += "<size>" + size + "</size>";
-                sceneDataTemp += "</outline>";
-            }
-        }
-
-        var gradientFillID = getID("gradientFill");
-        if(layerEffectsDesc.hasKey(gradientFillID))
-		{
-            var gradientFillDesc = layerEffectsDesc.getObjectValue(gradientFillID);
-            var gradientID = getID("gradient");
-            if(gradientFillDesc.hasKey(gradientID) && gradientFillDesc.getBoolean(1701732706))
-            {
-                var gradientDesc = gradientFillDesc.getObjectValue(gradientID);
-                var transparencyList = gradientDesc.getList(getID("transparency"));
-                var colorList = gradientDesc.getList(getID("colors"));
-				//若渐变色值数量大于设置的数量，则栅格化图层并输出为图片
-                if(transparencyList.count > maxGradientCount || colorList.count > maxGradientCount)
-                {
-					app.activeDocument.activeLayer = obj;
-					RasterizedTextLayer();
-					exportImage(obj,validFileName,isOutPutPngs);
-					return;
-                }
-                sceneDataTemp += "<gradient>";
+    
+        var curDoc = app.activeDocument;
+        obj.visible = true;
+        app.activeDocument.activeLayer = obj;
+        var size = getFontSize();
+    
+        var sceneDataTemp = "";
+        sceneDataTemp += "<imageType>" + "Label" + "</imageType>\n";
+        sceneDataTemp += "<name>" + validFileName + "</name>\n";
+        
+        sceneDataTemp += "<arguments>";
+        sceneDataTemp += "<color>" + obj.textItem.color.rgb.hexValue + "</color>";
+        sceneDataTemp += "<font>" + obj.textItem.font + "</font>";
+        sceneDataTemp += "<fontSize>" + size + "</fontSize>";
+        
+        var content = getFontContent(obj.textItem);
+        sceneDataTemp += "<content>" + content + "</content>";
+    
+        // 透明度
+        sceneDataTemp += "<opacity>" + Math.round(obj.opacity) * Math.round(obj.fillOpacity) / 100 +"</opacity>";
+        //描边
+    
+        var currentDesc = getActiveLayerDescriptor();
+    
+        var layerEffectsID = getID( "layerEffects" );
+        if(currentDesc.hasKey(layerEffectsID))
+        {
+            var layerEffectsDesc = currentDesc.getObjectValue(layerEffectsID);
+            var frameFXID = getID("frameFX");
+            if(layerEffectsDesc.hasKey(frameFXID)){
+                var frameFXDesc = layerEffectsDesc.getObjectValue(frameFXID);
                 var colorID = getID("color");
-                for(var i = 0;i < 2;i++)
+                var opacity = frameFXDesc.getDouble(getID("opacity"));
+                var size = frameFXDesc.getDouble(getID("size"));
+                //若描边像素大于设置的描边像素，则输出为图片
+                if( Number(size) > maxOutlinePixel )
                 {
-                    if(colorList.getObjectValue(i).hasKey(colorID))
-                    {
-                        var colorDesc = colorList.getObjectValue(i).getObjectValue(colorID);
-                        var rgbTxt = descToColorList(colorDesc);
-                        var rgbHexTxt = changeToHex(rgbTxt);
-                        sceneDataTemp += "<color" + i + ">" + rgbHexTxt +"</color" + i + ">\n";
-                        sceneDataTemp += "<opacity" + i + ">" + transparencyList.getObjectValue(i).getDouble(getID("opacity")) + "</opacity" + i + ">\n";
-                    }
+                    app.activeDocument.activeLayer = obj;
+                    RasterizedTextLayer();
+                    exportImage(obj,validFileName,isOutPutPngs);
+                    return;
                 }
-                sceneDataTemp += "</gradient>";
+                if(frameFXDesc.hasKey(colorID) && frameFXDesc.getBoolean(1701732706))
+                {
+                    var colorDesc = frameFXDesc.getObjectValue(colorID);
+                    var rgbTxt = descToColorList(colorDesc);
+                    var rgbHexTxt = changeToHex(rgbTxt);
+                    sceneDataTemp += "<outline>\n";
+                    sceneDataTemp += "<color>" + rgbHexTxt + "</color>";
+                    sceneDataTemp += "<size>" + size + "</size>";
+                    sceneDataTemp += "</outline>";
+                }
+            }
+    
+            var gradientFillID = getID("gradientFill");
+            if(layerEffectsDesc.hasKey(gradientFillID))
+            {
+                var gradientFillDesc = layerEffectsDesc.getObjectValue(gradientFillID);
+                var gradientID = getID("gradient");
+                if(gradientFillDesc.hasKey(gradientID) && gradientFillDesc.getBoolean(1701732706))
+                {
+                    var gradientDesc = gradientFillDesc.getObjectValue(gradientID);
+                    var transparencyList = gradientDesc.getList(getID("transparency"));
+                    var colorList = gradientDesc.getList(getID("colors"));
+                    //若渐变色值数量大于设置的数量，则栅格化图层并输出为图片
+                    if(transparencyList.count > maxGradientCount || colorList.count > maxGradientCount)
+                    {
+                        app.activeDocument.activeLayer = obj;
+                        RasterizedTextLayer();
+                        exportImage(obj,validFileName,isOutPutPngs);
+                        return;
+                    }
+                    sceneDataTemp += "<gradient>";
+                    var colorID = getID("color");
+                    for(var i = 0;i < 2;i++)
+                    {
+                        if(colorList.getObjectValue(i).hasKey(colorID))
+                        {
+                            var colorDesc = colorList.getObjectValue(i).getObjectValue(colorID);
+                            var rgbTxt = descToColorList(colorDesc);
+                            var rgbHexTxt = changeToHex(rgbTxt);
+                            sceneDataTemp += "<color" + i + ">" + rgbHexTxt +"</color" + i + ">\n";
+                            sceneDataTemp += "<opacity" + i + ">" + transparencyList.getObjectValue(i).getDouble(getID("opacity")) + "</opacity" + i + ">\n";
+                        }
+                    }
+                    sceneDataTemp += "</gradient>";
+                }
             }
         }
+        sceneDataTemp += "</arguments>";
+        //此步骤为获取文本层的位置和大小，不需要输出图片
+        // var newPsd = duppedPsd.duplicate();
+        // alert("exportLabel1 ")
+        // app.activeDocument = curDoc;
+        // obj.visible = false;
+        var newPsd = copyAndPasteNewPsd(obj);
+        // alert("exportLabel2 " + newPsd);
+    try {
+        saveScenePng(newPsd, validFileName, false);
+    } catch (error) {
+        alert(error);
     }
-    sceneDataTemp += "</arguments>";
-	//此步骤为获取文本层的位置和大小，不需要输出图片
-    saveScenePng(duppedPsd.duplicate(), validFileName, false);
-	obj.visible = false;
-	
-	sceneData += sceneDataTemp;
+    sceneData += sceneDataTemp;
 }
+
+function getFontContent(textItem) {
+    var ref = new ActionReference();
+         ref.putEnumerated( stringIDToTypeID( "layer" ), charIDToTypeID( "Ordn" ), charIDToTypeID( "Trgt" ));
+    var desc= executeActionGet( ref )
+    var list =  desc.getObjectValue(charIDToTypeID("Txt ")) ;
+    var tsr =  list.getList(charIDToTypeID("Txtt")) ;
+    var info = new Array();
+    for(var i = 0;i<tsr.count;i++){
+         var tsr0 =  tsr.getObjectValue(i) ;
+         var from = tsr0.getInteger(charIDToTypeID("From"));
+         var to = tsr0.getInteger(charIDToTypeID("T   "));
+         var range = [from,to];
+         var textStyle = tsr0.getObjectValue(charIDToTypeID("TxtS"));
+         var font = textStyle.getString(charIDToTypeID("FntN" )); 
+         var size = textStyle.getDouble(charIDToTypeID("Sz  " ));
+         var color = textStyle.getObjectValue(charIDToTypeID('Clr ')); 
+         var textColor = new SolidColor;
+              textColor.rgb.red = color.getDouble(charIDToTypeID('Rd  '));
+              textColor.rgb.green = color.getDouble(charIDToTypeID('Grn '));
+              textColor.rgb.blue = color.getDouble(charIDToTypeID('Bl  '));
+         info.push([range,font,size, textColor.rgb.hexValue]);
+    }
+
+    try {
+        var content = textItem.contents;
+        var newContent = "";
+    
+        for (var index = 0; index < info.length; index++) {
+            var element = info[index];
+            if(element[3] == textItem.color.rgb.hexValue)
+            {
+                newContent += content.substr(element[0][0], element[0][1]);
+            }
+            else
+            {
+                newContent += colorText(element[3], content.substr(element[0][0], element[0][1]));
+            }
+        }
+    } catch (error) {
+        alert(error);
+    }
+
+    return newContent;
+} 
+
+function colorText(color, content)
+{
+    return "[" + color + content + "]";
+}
+
+function getFontSize(){  
+    var ref = new ActionReference();  
+    ref.putEnumerated( charIDToTypeID("Lyr "), charIDToTypeID("Ordn"), charIDToTypeID("Trgt") );   
+    var desc = executeActionGet(ref).getObjectValue(stringIDToTypeID('textKey'));  
+    var textSize =  desc.getList(stringIDToTypeID('textStyleRange')).getObjectValue(0).getObjectValue(stringIDToTypeID('textStyle')).getDouble (stringIDToTypeID('size'));  
+    if (desc.hasKey(stringIDToTypeID('transform'))) 
+    {  
+            var mFactor = desc.getObjectValue(stringIDToTypeID('transform')).getUnitDoubleValue (stringIDToTypeID("yy") );  
+            textSize = (textSize* mFactor).toFixed(0);  
+    }  
+    return textSize;  
+} 
 
 function exportImage(obj,validFileName,isOutPutPngs)
 {
@@ -804,64 +934,74 @@ function getLayerRec(psd,notMerge)
     };
 }
 
-function saveScenePng(psd, fileName, writeToDisk,notMerge)
+function saveScenePng(psd, fileName, writeToDisk, notMerge, rect1)
 {
-    // figure out where the top-left corner is so it can be exported into the scene file for placement in game
-    // capture current size
-    var height = psd.height.value;
-    var width = psd.width.value;
-    var top = psd.height.value;
-    var left = psd.width.value;
-    // trim off the top and left
-    psd.trim(TrimType.TRANSPARENT, true, true, false, false);
-    // the difference between original and trimmed is the amount of offset
-    top -= psd.height.value;
-    left -= psd.width.value;
-    // trim the right and bottom
-    psd.trim(TrimType.TRANSPARENT);
-    // find center
-    top += (psd.height.value / 2)
-    left += (psd.width.value / 2)
-    // unity needs center of image, not top left
-    top = -(top - (height / 2));
-    left -= (width / 2);
+    // alert("saveScenePng");
+    try {
+        var rec = rect1;
+        if(rec == null) 
+        {
+            // figure out where the top-left corner is so it can be exported into the scene file for placement in game
+            // capture current size
+            var height = psd.height.value;
+            var width = psd.width.value;
+            var top = psd.height.value;
+            var left = psd.width.value;
+            // trim off the top and left
+            psd.trim(TrimType.TRANSPARENT, true, true, false, false);
+            // the difference between original and trimmed is the amount of offset
+            top -= psd.height.value;
+            left -= psd.width.value;
+            // trim the right and bottom
+            psd.trim(TrimType.TRANSPARENT);
+            // find center
+            top += (psd.height.value / 2)
+            left += (psd.width.value / 2)
+            // unity needs center of image, not top left
+            top = -(top - (height / 2));
+            left -= (width / 2);
 
-    height = psd.height.value;
-    width = psd.width.value;
+            height = psd.height.value;
+            width = psd.width.value;
 
-    var rec = {
-        y: top,
-        x: left,
-        width: width,
-        height: height
-    };
+            rec = {
+                y: top,
+                x: left,
+                width: width,
+                height: height
+            };
+        }
 
     // save the scene data
-    if(!notMerge){
-        sceneData += "<position>";
-        sceneData += "<x>" + rec.x + "</x>";
-        sceneData += "<y>" + rec.y + "</y>";
-        sceneData += "</position>";
+        if(!notMerge){
+            sceneData += "<position>";
+            sceneData += "<x>" + rec.x + "</x>";
+            sceneData += "<y>" + rec.y + "</y>";
+            sceneData += "</position>";
 
-        sceneData += "<size>";
-        sceneData += "<width>" + rec.width + "</width>";
-        sceneData += "<height>" + rec.height + "</height>";
-        sceneData += "</size>";
-    }
-    
-     if (writeToDisk)
-     {
-        // save the image
-        var pngFile = new File(destinationFolder + "/" + fileName + ".png");
+            sceneData += "<size>";
+            sceneData += "<width>" + rec.width + "</width>";
+            sceneData += "<height>" + rec.height + "</height>";
+            sceneData += "</size>";
+        }
         
-        var pngSaveOptions = new ExportOptionsSaveForWeb();
-        pngSaveOptions.format = SaveDocumentType.PNG;
-        pngSaveOptions.PNG8 = false;
-		pngSaveOptions.quality = 100;
-        psd.exportDocument(pngFile,ExportType.SAVEFORWEB,pngSaveOptions);
+    
+        if (writeToDisk)
+        {
+            // save the image
+            var pngFile = new File(destinationFolder + "/" + fileName + ".png");
+            
+            var pngSaveOptions = new ExportOptionsSaveForWeb();
+            pngSaveOptions.format = SaveDocumentType.PNG;
+            pngSaveOptions.PNG8 = false;
+            pngSaveOptions.quality = 100;
+            psd.exportDocument(pngFile,ExportType.SAVEFORWEB,pngSaveOptions);
+        }
+        // alert("saveScenePng" + writeToDisk);
+        psd.close(SaveOptions.DONOTSAVECHANGES);
+    } catch (error) {
+        alert(error);
     }
-    psd.close(SaveOptions.DONOTSAVECHANGES);
-
 }
 
 function makeValidFileName(fileName)
@@ -889,7 +1029,8 @@ function makeValidFileName(fileName)
 			!sourcePsdName.match("Global") ||
 			!sourcePsdName.match("CustomAtlas"))    // 判断是否为公用的PSD素材文件，如果不是，则自动为图片增加后缀，防止重名。 公用psd文件的图片层不允许重名。
     {
-        validName += "_" + uuid++;
+        // TODO 去掉名字唯一
+        // validName += "_" + uuid++;
     }
     
      $.writeln(validName);
@@ -899,6 +1040,23 @@ function makeValidFileName(fileName)
 // 裁切 基于透明像素
 function trim(doc){
     doc.trim(TrimType.TRANSPARENT,true,true,true,true);
+}
+
+function copyAndPasteNewPsd(obj)
+{
+    var arr = obj.bounds;
+    obj.copy();
+    var newPsd = addDocument(1);
+    app.activeDocument = newPsd;
+    newPsd.paste();
+    var layer = newPsd.layers.getByName("Layer 1");
+    if(layer != null)
+    {
+        var curBounds = layer.bounds;
+        layer.translate(-curBounds[0] + arr[0], -curBounds[1] + arr[1]);
+    }
+
+    return newPsd;
 }
 
 //Action Descriptor///////////////////////////////////////////////////////////////////////////////////////////
